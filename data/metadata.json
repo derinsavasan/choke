@@ -1,0 +1,164 @@
+{
+  "1.png": {
+    "restaurant_name": "Olde Brooklyn Bagel Shoppe",
+    "borough": "Brooklyn",
+    "neighborhood": "Prospect Heights",
+    "cuisine": "American",
+    "style": "Contemporary",
+    "position": "Counter Zone",
+    "image_filename": "1.png"
+  },
+  "2.png": {
+    "restaurant_name": "Fools Gold NYC",
+    "borough": "Manhattan",
+    "neighborhood": "Lower East Side",
+    "cuisine": "American",
+    "style": "Contemporary",
+    "position": "Eye Level",
+    "image_filename": "2.png"
+  },
+  "3.png": {
+    "restaurant_name": "Twins Lounge",
+    "borough": "Brooklyn",
+    "neighborhood": "Williamsburg",
+    "cuisine": "Bar",
+    "style": "Retro",
+    "position": "Eye Level",
+    "image_filename": "3.png"
+  },
+  "4.png": {
+    "restaurant_name": "Café Habana",
+    "borough": "Manhattan",
+    "neighborhood": "Nolita",
+    "cuisine": "Cuban",
+    "style": "Handmade",
+    "position": "Bathroom Shrine",
+    "image_filename": "4.png"
+  },
+  "5.png": {
+    "restaurant_name": "Las' Lap",
+    "borough": "Manhattan",
+    "neighborhood": "Lower East Side",
+    "cuisine": "Bar",
+    "style": "Retro",
+    "position": "Hallway Niche",
+    "image_filename": "5.png"
+  },
+  "6.png": {
+    "restaurant_name": "Fools Gold NYC",
+    "borough": "Manhattan",
+    "neighborhood": "Lower East Side",
+    "cuisine": "American",
+    "style": "Contemporary",
+    "position": "Eye Level",
+    "image_filename": "6.png"
+  },
+  "7.png": {
+    "restaurant_name": "Urban Outfitters",
+    "borough": "Manhattan",
+    "neighborhood": "East Village",
+    "cuisine": "Retail",
+    "style": "Minimalist",
+    "position": "Eye Level",
+    "image_filename": "7.png"
+  },
+  "8.png": {
+    "restaurant_name": "Five Leaves",
+    "borough": "Brooklyn",
+    "neighborhood": "Greenpoint",
+    "cuisine": "American",
+    "style": "Handmade",
+    "position": "Above the Sink",
+    "image_filename": "8.png"
+  },
+  "9.jpg": {
+    "restaurant_name": "375° Chicken 'n Fries",
+    "borough": "Manhattan",
+    "neighborhood": "Lower East Side",
+    "cuisine": "American",
+    "style": "Contemporary",
+    "position": "Eye Level",
+    "image_filename": "9.jpg"
+  },
+  "10.jpg": {
+    "restaurant_name": "Two Hands Corn Dogs",
+    "borough": "Manhattan",
+    "neighborhood": "Nolita",
+    "cuisine": "Korean",
+    "style": "Retro",
+    "position": "Behind the Drinks",
+    "image_filename": "10.jpg"
+  },
+  "11.jpg": {
+    "restaurant_name": "Eyval",
+    "borough": "Brooklyn",
+    "neighborhood": "Bushwick",
+    "cuisine": "Persian",
+    "style": "Handmade",
+    "position": "Eye Level",
+    "image_filename": "11.jpg"
+  },
+  "12.jpg": {
+    "restaurant_name": "Los Tacos 1",
+    "borough": "Manhattan",
+    "neighborhood": "NoHo",
+    "cuisine": "Mexican",
+    "style": "Traditional",
+    "position": "Hidden Spot",
+    "image_filename": "12.jpg"
+  },
+  "13.jpg": {
+    "restaurant_name": "MáLà Project",
+    "borough": "Manhattan",
+    "neighborhood": "East Village",
+    "cuisine": "Chinese",
+    "style": "Vintage",
+    "position": "Hallway Niche",
+    "image_filename": "13.jpg"
+  },
+  "14.jpg": {
+    "restaurant_name": "Shake Shack",
+    "borough": "Manhattan",
+    "neighborhood": "NoHo",
+    "cuisine": "American",
+    "style": "Modern",
+    "position": "Above the Sink",
+    "image_filename": "14.jpg"
+  },
+  "15.jpg": {
+    "restaurant_name": "Gimme Coffee",
+    "borough": "Brooklyn",
+    "neighborhood": "Williamsburg",
+    "cuisine": "Coffee",
+    "style": "Contemporary",
+    "position": "Counter Zone",
+    "image_filename": "15.jpg"
+  },
+  "16.jpg": {
+    "restaurant_name": "Time Again",
+    "borough": "Manhattan",
+    "neighborhood": "Lower East Side",
+    "cuisine": "Bar",
+    "style": "Handmade",
+    "position": "Hidden Spot",
+    "image_filename": "16.jpg"
+  },
+  "17.png": {
+    "restaurant_name": "Chez Fifi",
+    "borough": "Manhattan",
+    "neighborhood": "Upper East Side",
+    "cuisine": "French",
+    "style": "Retro",
+    "position": "Near Exit Sign",
+    "image_filename": "17.png"
+  },
+  "18.png": {
+    "restaurant_name": "Otafuku",
+    "borough": "Manhattan",
+    "neighborhood": "East Village",
+    "cuisine": "Japanese",
+    "style": "Vintage",
+    "position": "Hidden Spot",
+    "image_filename": "18.png"
+  }
+}

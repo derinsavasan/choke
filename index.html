@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Restaurant Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { font-family: 'Aptos', system-ui, -apple-system, sans-serif; overflow: hidden; }
+        svg { display: block; width: 100%; height: 100%; }
+        #corner-image {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+        }
+        #corner-img {
+            max-width: 600px;
+            max-height: 600px;
+            border-radius: 0;
+            display: block;
+        }
+        #corner-info {
+            display: none;
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            z-index: 2000;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+            min-width: 220px;
+        }
+        #corner-title {
+            font-family: 'Aptos', system-ui, sans-serif;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        #corner-info div {
+            font-family: 'Aptos', system-ui, sans-serif;
+            font-size: 19px;
+            margin-bottom: 10px;
+        }
+        #corner-info b {
+            color: #000;
+        }
+        #corner-info span {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <div id="corner-image">
+        <img id="corner-img" src="" alt="Restaurant">
+    </div>
+    <div id="corner-info">
+        <div id="corner-title"></div>
+        <div><b>Borough:</b> <span id="corner-borough"></span></div>
+        <div><b>Neighborhood:</b> <span id="corner-neighborhood"></span></div>
+        <div><b>Cuisine:</b> <span id="corner-cuisine"></span></div>
+        <div><b>Style:</b> <span id="corner-style"></span></div>
+        <div><b>Position:</b> <span id="corner-position"></span></div>
+    </div>
+    <script>
+        // Constants
+        const width = 928;
+        const height = 500;
+        const radius = 30;
+        const step = radius * 3.2;
+        const theta = Math.PI * (3 - Math.sqrt(5));
+
+        // Load data and initialize visualization
+        fetch('data/metadata.json')
+            .then(response => response.json())
+            .then(metadata => {
+                // Process data
+                const restaurants = Object.entries(metadata).map(([filename, data]) => ({
+                    filename,
+                    ...data
+                }));
+
+                // Layout circles in spiral
+                const data = layoutSpiral(restaurants);
+
+                // Create SVG and elements
+                const svg = createSVG();
+                const circles = createCircles(svg, data);
+
+                // Start animation
+                animateBouncing(circles, data);
+
+                // Event handlers
+                setupEventHandlers(svg, circles, data);
+
+                // Append to DOM
+                document.getElementById("chart").appendChild(svg.node());
+            });
+
+        // Function to layout circles in a centered spiral
+        function layoutSpiral(restaurants) {
+            let spiralCenterX = width / 2;
+            let spiralCenterY = height / 2;
+
+            // Temporary layout to compute bounding box
+            const tempData = restaurants.map((restaurant, i) => {
+                const r = step * Math.sqrt(i + 0.5);
+                const a = theta * i;
+                return [spiralCenterX + r * Math.cos(a), spiralCenterY + r * Math.sin(a)];
+            });
+
+            // Compute bounding box
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            tempData.forEach(([x, y]) => {
+                minX = Math.min(minX, x - radius);
+                maxX = Math.max(maxX, x + radius);
+                minY = Math.min(minY, y - radius);
+                maxY = Math.max(maxY, y + radius);
+            });
+
+            // Offset to center
+            const margin = 20;
+            const offsetX = (width - (maxX - minX)) / 2 - minX + margin;
+            const offsetY = (height - (maxY - minY)) / 2 - minY + margin;
+
+            // Final layout with zoom factor and velocities
+            const zoomFactor = 0.85;
+            return restaurants.map((restaurant, i) => {
+                const r = step * Math.sqrt(i + 0.5) * zoomFactor;
+                const a = theta * i;
+                const x = spiralCenterX + r * Math.cos(a) + offsetX;
+                const y = spiralCenterY + r * Math.sin(a) + offsetY;
+                const vx = (Math.random() - 0.5) * 2.2;
+                const vy = (Math.random() - 0.5) * 2.2;
+                return { x, y, vx, vy, restaurant };
+            });
+        }
+
+        // Create SVG element
+        function createSVG() {
+            const svg = d3.create("svg")
+                .attr("viewBox", [0, 0, width, height])
+                .style("cursor", "pointer");
+
+            const g = svg.append("g");
+
+            // Create defs for image patterns
+            const defs = svg.append("defs");
+            // (patterns will be added in createCircles)
+
+            return svg;
+        }
+
+        // Create circles with images
+        function createCircles(svg, data) {
+            const defs = svg.select("defs");
+
+            data.forEach((d, i) => {
+                const pattern = defs.append("pattern")
+                    .attr("id", `pattern-${i}`)
+                    .attr("patternUnits", "objectBoundingBox")
+                    .attr("width", 1)
+                    .attr("height", 1);
+
+                pattern.append("image")
+                    .attr("href", `data/${d.restaurant.image_filename}`)
+                    .attr("width", radius * 2)
+                    .attr("height", radius * 2)
+                    .attr("preserveAspectRatio", "xMidYMid slice");
+            });
+
+            const circles = svg.select("g").selectAll("circle")
+                .data(data)
+                .join("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", radius)
+                .attr("fill", (d, i) => `url(#pattern-${i})`)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .style("cursor", "pointer");
+
+            return circles;
+        }
+
+        // Animation loop
+        function animateBouncing(circles, data) {
+            function update() {
+                // Update positions and bounce off walls
+                data.forEach(d => {
+                    d.x += d.vx;
+                    d.y += d.vy;
+
+                    if (d.x - radius < 0) { d.x = radius; d.vx *= -1; }
+                    if (d.x + radius > width) { d.x = width - radius; d.vx *= -1; }
+                    if (d.y - radius < 0) { d.y = radius; d.vy *= -1; }
+                    if (d.y + radius > height) { d.y = height - radius; d.vy *= -1; }
+                });
+
+                // Handle collisions between circles
+                for (let i = 0; i < data.length; i++) {
+                    for (let j = i + 1; j < data.length; j++) {
+                        const d1 = data[i], d2 = data[j];
+                        const dx = d1.x - d2.x, dy = d1.y - d2.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 2 * radius) {
+                            // Elastic collision
+                            const n = { x: dx / dist, y: dy / dist };
+                            const dot = (d1.vx - d2.vx) * n.x + (d1.vy - d2.vy) * n.y;
+                            d1.vx -= dot * n.x;
+                            d1.vy -= dot * n.y;
+                            d2.vx += dot * n.x;
+                            d2.vy += dot * n.y;
+
+                            // Separate
+                            const overlap = 2 * radius - dist;
+                            d1.x += n.x * overlap / 2;
+                            d1.y += n.y * overlap / 2;
+                            d2.x -= n.x * overlap / 2;
+                            d2.y -= n.y * overlap / 2;
+                        }
+                    }
+                }
+
+                // Update circle positions
+                circles.attr("cx", d => d.x).attr("cy", d => d.y);
+
+                requestAnimationFrame(update);
+            }
+            update();
+        }
+
+        // Setup event handlers
+        function setupEventHandlers(svg, circles, data) {
+            circles.on("click", (event, d) => {
+                event.stopPropagation();
+                if (d3.select("#corner-image").style("display") === "block") {
+                    closeCard();
+                } else {
+                    showCard(d.restaurant);
+                }
+            });
+
+            svg.on("click", closeCard);
+        }
+
+        // Show restaurant details
+        function showCard(restaurant) {
+            d3.select("#corner-img").attr("src", `data/${restaurant.image_filename}`);
+            d3.select("#corner-image").style("display", "block");
+
+            d3.select("#corner-title").text(restaurant.restaurant_name);
+            d3.select("#corner-borough").text(restaurant.borough || "N/A");
+            d3.select("#corner-neighborhood").text(restaurant.neighborhood || "N/A");
+            d3.select("#corner-cuisine").text(restaurant.cuisine);
+            d3.select("#corner-style").text(restaurant.style);
+            d3.select("#corner-position").text(restaurant.position);
+            d3.select("#corner-info").style("display", "block");
+        }
+
+        // Hide details
+        function closeCard() {
+            d3.select("#corner-image").style("display", "none");
+            d3.select("#corner-info").style("display", "none");
+        }
+    </script>
+</body>
+</html></content>
+<parameter name="filePath">/Users/derinsavasan/Desktop/parsons-fall/typo/choke/index.html
