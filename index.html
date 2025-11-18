@@ -13,12 +13,130 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
     <style>
         * { margin: 0; padding: 0; }
         body { font-family: 'Inter', sans-serif; overflow: hidden; }
+        #chart, #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        #map {
+            display: none;
+            z-index: 1;
+            background: #f6f6f6;
+        }
+        #map svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .map-boroughs path {
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+        .map-markers g.map-marker {
+            filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.18));
+        }
+        .map-markers g.map-marker.is-cluster circle {
+            fill: #111;
+            stroke: #fff;
+            stroke-width: 1.6;
+        }
+        .map-markers g.map-marker.is-cluster text {
+            fill: #fff;
+        }
+        .map-markers g.map-marker.is-point circle {
+            fill: #0f0f10;
+            stroke: #fff;
+            stroke-width: 1;
+        }
+        #map-tooltip {
+            position: fixed;
+            display: none;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 10px 12px;
+            z-index: 2600;
+            width: 160px;
+        }
+        #map-tooltip img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        #map-tooltip .tooltip-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        #map-tooltip .tooltip-details {
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+        }
         svg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
         #chart.dimmed {
             opacity: 0.5;
+        }
+        #view-toggle {
+            position: fixed;
+            top: 2vw;
+            right: 2vw;
+            z-index: 2500;
+            width: 220px;
+            height: 44px;
+            background: #0f0f10;
+            border-radius: 999px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+        }
+        #view-toggle button {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 0;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            color: rgba(255,255,255,0.7);
+            transition: color 0.2s ease;
+            position: relative;
+            z-index: 2;
+        }
+        #view-toggle button:focus-visible {
+            outline: none;
+        }
+        #view-toggle .toggle-pill {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc(50% - 8px);
+            height: calc(100% - 8px);
+            background: #fff;
+            border-radius: 999px;
+            transition: left 0.3s ease;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+        #view-toggle[data-active="map"] .toggle-pill {
+            left: calc(50% + 4px);
+        }
+        #view-toggle button.active {
+            color: #111;
         }
         #corner-image {
             display: none;
@@ -122,7 +240,18 @@
 </head>
 <body>
     <div id="welcome-backdrop"></div>
+    <div id="view-toggle" role="tablist" aria-label="Visualization view" data-active="bubbles">
+        <div class="toggle-pill"></div>
+        <button type="button" class="active" data-view="bubbles" aria-pressed="true">Posters</button>
+        <button type="button" data-view="map" aria-pressed="false">Map</button>
+    </div>
     <div id="chart"></div>
+    <div id="map" aria-hidden="true"></div>
+    <div id="map-tooltip">
+        <img src="" alt="" />
+        <div class="tooltip-title"></div>
+        <div class="tooltip-details"></div>
+    </div>
     <div id="corner-image">
         <img id="corner-img" src="" alt="Restaurant">
     </div>
@@ -145,6 +274,10 @@
         let radius = Math.min(width, height) / 20; // Responsive radius, slightly bigger
         let step = radius * 3.2;
         const theta = Math.PI * (3 - Math.sqrt(5));
+        let bounceControls = null;
+        const mapState = { render: null };
+        const mapTooltipEl = document.getElementById('map-tooltip');
+        let currentView = 'bubbles';
 
         // Show welcome message
         const welcome = document.getElementById('welcome-message');
@@ -160,11 +293,18 @@
         };
         document.addEventListener('click', dismissWelcome);
 
-        // Load data and initialize visualization: read CSV (primary) and use metadata.json as a filename lookup
+        function hideGlobalMapTooltip() {
+            if (mapTooltipEl) {
+                mapTooltipEl.style.display = 'none';
+            }
+        }
+
+        // Load data and initialize visualization: read CSV (primary), metadata lookup, and borough geojson
         Promise.all([
             d3.csv('data/choke-me.csv'),
-            fetch('data/metadata.json').then(r => r.json())
-        ]).then(([csvRows, metadata]) => {
+            fetch('data/metadata.json').then(r => r.json()),
+            fetch('data/nyc.geojson').then(r => r.json())
+        ]).then(([csvRows, metadata, boroughsGeo]) => {
             // Build quick lookup of available metadata keys by stem and by full filename
             const availableKeys = new Set(Object.keys(metadata));
             const stemToKey = {};
@@ -174,7 +314,7 @@
             });
 
             // Resolve CSV rows to restaurant objects (use heimlich.png as placeholder when missing)
-            const restaurants = csvRows.map(row => {
+            const restaurants = csvRows.map((row, index) => {
                 const imgField = (row.image_filename || '').toString().trim();
                 let filename = null;
                 if (!imgField) {
@@ -195,6 +335,10 @@
                     if (!filename) filename = 'heimlich.png';
                 }
 
+                const lat = parseFloat(row.latitude);
+                const lon = parseFloat(row.longitude);
+                const uid = (row.restaurant_name || `restaurant-${index}`).toString().replace(/\s+/g, '-').toLowerCase() + `-${index}`;
+
                 return {
                     image_filename: filename,
                     restaurant_name: row.restaurant_name || '',
@@ -202,7 +346,10 @@
                     neighborhood: row.neighborhood || '',
                     cuisine: row.cuisine || '',
                     style: row.style || '',
-                    position: row.position || ''
+                    position: row.position || '',
+                    uid,
+                    latitude: Number.isFinite(lat) ? lat : null,
+                    longitude: Number.isFinite(lon) ? lon : null
                 };
             });
 
@@ -210,8 +357,10 @@
             const svg = createSVG();
             const circles = createCircles(svg, data);
 
-            animateBouncing(circles, data);
+            bounceControls = animateBouncing(circles, data);
             setupEventHandlers(svg, circles, data);
+            initializeMap(restaurants, boroughsGeo);
+            setupViewToggle();
 
             document.getElementById("chart").appendChild(svg.node());
 
@@ -355,7 +504,15 @@
         }
 
         function animateBouncing(circles, data) {
-            function update() {
+            let frameId = null;
+            let paused = false;
+
+            function step() {
+                if (paused) {
+                    frameId = null;
+                    return;
+                }
+
                 data.forEach(d => {
                     d.x += d.vx;
                     d.y += d.vy;
@@ -390,9 +547,32 @@
                 }
 
                 circles.attr("cx", d => d.x).attr("cy", d => d.y);
-                requestAnimationFrame(update);
+                frameId = requestAnimationFrame(step);
             }
-            update();
+
+            function start() {
+                if (!paused && frameId) {
+                    return;
+                }
+                paused = false;
+                if (!frameId) {
+                    frameId = requestAnimationFrame(step);
+                }
+            }
+
+            function stop() {
+                if (paused && !frameId) {
+                    return;
+                }
+                paused = true;
+                if (frameId) {
+                    cancelAnimationFrame(frameId);
+                    frameId = null;
+                }
+            }
+
+            start();
+            return { start, stop };
         }
 
         function setupEventHandlers(svg, circles, data) {
@@ -408,6 +588,322 @@
             });
 
             svg.on("click", closeCard);
+        }
+
+        function initializeMap(restaurants, boroughsGeo) {
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                return;
+            }
+
+            mapElement.innerHTML = '';
+
+            const boroughFeatures = (boroughsGeo?.features || []).filter(feature => {
+                const boro = feature?.properties?.boro_name;
+                return boro === 'Manhattan' || boro === 'Brooklyn';
+            });
+
+            if (!boroughFeatures.length) {
+                return;
+            }
+
+            const tooltip = d3.select('#map-tooltip');
+            const tooltipImg = tooltip.select('img');
+            const tooltipTitle = tooltip.select('.tooltip-title');
+            const tooltipDetails = tooltip.select('.tooltip-details');
+
+            const svg = d3.select(mapElement)
+                .append('svg')
+                .attr('class', 'map-svg');
+
+            const zoomGroup = svg.append('g').attr('class', 'map-zoom-layer');
+            const boroughLayer = zoomGroup.append('g').attr('class', 'map-boroughs');
+            const markerLayer = svg.append('g').attr('class', 'map-markers');
+
+            const plottedRestaurants = restaurants.filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
+
+            let projection = null;
+            let currentTransform = d3.zoomIdentity;
+            let displayNodes = [];
+
+            const zoom = d3.zoom()
+                .scaleExtent([1, 8])
+                .on('zoom', event => {
+                    currentTransform = event.transform;
+                    zoomGroup.attr('transform', currentTransform);
+                    positionMarkers();
+                });
+
+            svg.call(zoom).on('dblclick.zoom', null);
+
+            const render = () => {
+                const width = mapElement.clientWidth || window.innerWidth || 800;
+                const height = mapElement.clientHeight || window.innerHeight || 600;
+                svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+                projection = d3.geoMercator()
+                    .fitExtent([[80, 40], [width - 80, height - 40]], {
+                        type: 'FeatureCollection',
+                        features: boroughFeatures
+                    });
+
+                const path = d3.geoPath(projection);
+
+                boroughLayer.selectAll('path')
+                    .data(boroughFeatures)
+                    .join('path')
+                    .attr('d', path)
+                    .attr('fill', '#f7f8fb')
+                    .attr('stroke', '#111')
+                    .attr('stroke-width', Math.max(0.25, 0.65 / (currentTransform.k || 1)));
+
+                plottedRestaurants.forEach(d => {
+                    const projected = projection([d.longitude, d.latitude]);
+                    d._mapX = projected ? projected[0] : -999;
+                    d._mapY = projected ? projected[1] : -999;
+                });
+
+                positionMarkers();
+                zoomGroup.attr('transform', currentTransform);
+            };
+
+            function updateTooltip(event, d) {
+                if (d.type === 'cluster') {
+                    tooltipImg.style('display', 'none');
+                    tooltipTitle.text(`${d.count} poster${d.count === 1 ? '' : 's'}`);
+                    tooltipDetails.text('Zoom in to see individual locations.');
+                } else {
+                    tooltipImg.style('display', 'block');
+                    tooltipImg.attr('src', `data/${d.image_filename}`);
+                    tooltipImg.attr('alt', d.restaurant_name || 'Restaurant');
+                    tooltipTitle.text(d.restaurant_name || 'Unknown');
+                    tooltipDetails.text(d.position || '');
+                }
+                tooltip
+                    .style('display', 'block')
+                    .style('left', `${event.clientX + 16}px`)
+                    .style('top', `${event.clientY + 16}px`);
+            }
+
+            function hideTooltip() {
+                tooltip.style('display', 'none');
+            }
+
+            function attachInteractions(selection) {
+                selection
+                    .on('mouseenter', (event, d) => {
+                        event.stopPropagation();
+                        updateTooltip(event, d);
+                    })
+                    .on('mousemove', (event, d) => {
+                        if (tooltip.style('display') === 'block') {
+                            tooltip
+                                .style('left', `${event.clientX + 16}px`)
+                                .style('top', `${event.clientY + 16}px`);
+                        }
+                    })
+                    .on('mouseleave', hideTooltip)
+                    .on('click', (event, d) => {
+                        event.stopPropagation();
+                        if (d.type === 'cluster') {
+                            svg.transition().duration(350).call(
+                                zoom.scaleBy,
+                                1.6,
+                                [d.x, d.y]
+                            );
+                        }
+                    });
+            }
+
+            function buildClusters(points, thresholdPx) {
+                const clusters = [];
+                const cellSize = thresholdPx;
+                const grid = new Map();
+
+                const keyFor = (x, y) => `${Math.floor(x / cellSize)}-${Math.floor(y / cellSize)}`;
+
+                points.forEach(pt => {
+                    const key = keyFor(pt._screenX, pt._screenY);
+                    let cluster = grid.get(key);
+                    if (!cluster) {
+                        cluster = {
+                            id: `cluster-${key}-${clusters.length}`,
+                            type: 'cluster',
+                            x: pt._screenX,
+                            y: pt._screenY,
+                            count: 1
+                        };
+                        grid.set(key, cluster);
+                        clusters.push(cluster);
+                    } else {
+                        cluster.count += 1;
+                        cluster.x += (pt._screenX - cluster.x) / cluster.count;
+                        cluster.y += (pt._screenY - cluster.y) / cluster.count;
+                    }
+                });
+
+                return clusters;
+            }
+
+            function applyDuplicateOffsets(points) {
+                const groups = new Map();
+                points.forEach(pt => {
+                    const key = `${pt._mapX.toFixed(3)}-${pt._mapY.toFixed(3)}`;
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key).push(pt);
+                });
+
+                groups.forEach(list => {
+                    if (list.length === 1) {
+                        list[0]._screenX = currentTransform.applyX(list[0]._mapX);
+                        list[0]._screenY = currentTransform.applyY(list[0]._mapY);
+                        return;
+                    }
+                    const radius = 10;
+                    list.forEach((pt, idx) => {
+                        const angle = (idx / list.length) * Math.PI * 2;
+                        const x = pt._mapX + Math.cos(angle) * radius;
+                        const y = pt._mapY + Math.sin(angle) * radius;
+                        pt._screenX = currentTransform.applyX(x);
+                        pt._screenY = currentTransform.applyY(y);
+                    });
+                });
+            }
+
+            function positionMarkers() {
+                if (!plottedRestaurants.length) return;
+
+                const k = currentTransform.k || 1;
+                const showClusters = k < 2.3;
+
+                if (showClusters) {
+                    plottedRestaurants.forEach(pt => {
+                        pt._screenX = currentTransform.applyX(pt._mapX);
+                        pt._screenY = currentTransform.applyY(pt._mapY);
+                    });
+                    displayNodes = buildClusters(plottedRestaurants, 40);
+                } else {
+                    applyDuplicateOffsets(plottedRestaurants);
+                    displayNodes = plottedRestaurants.map(pt => ({
+                        type: 'point',
+                        id: pt.uid || pt.restaurant_name,
+                        x: pt._screenX,
+                        y: pt._screenY,
+                        image_filename: pt.image_filename,
+                        restaurant_name: pt.restaurant_name,
+                        neighborhood: pt.neighborhood,
+                        borough: pt.borough,
+                        position: pt.position
+                    }));
+                }
+
+                const markers = markerLayer.selectAll('g.map-marker')
+                    .data(displayNodes, d => d.id)
+                    .join(enter => {
+                        const g = enter.append('g')
+                            .attr('class', 'map-marker');
+                        g.append('circle');
+                        g.append('text')
+                            .attr('class', 'cluster-count')
+                            .attr('text-anchor', 'middle')
+                            .attr('dy', '0.35em')
+                            .style('font-size', '10px')
+                            .style('font-weight', '600')
+                            .style('pointer-events', 'none');
+                        return g;
+                    });
+
+                markers
+                    .classed('is-cluster', d => d.type === 'cluster')
+                    .classed('is-point', d => d.type === 'point');
+
+                markers.select('circle')
+                    .attr('r', d => d.type === 'cluster' ? Math.min(16, 8 + Math.log2(d.count) * 3) : 6)
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+
+                markers.select('text')
+                    .text(d => d.type === 'cluster' ? d.count : '')
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y)
+                    .style('fill', d => d.type === 'cluster' ? '#fff' : '#111');
+
+                attachInteractions(markers);
+            }
+
+            render();
+            window.addEventListener('resize', () => {
+                hideTooltip();
+                render();
+            });
+            mapState.render = () => {
+                hideTooltip();
+                render();
+            };
+
+            d3.select(mapElement).on('click', () => {
+                hideTooltip();
+                closeCard();
+            });
+        }
+
+        function setupViewToggle() {
+            const buttons = document.querySelectorAll('#view-toggle button');
+            const chart = document.getElementById('chart');
+            const mapEl = document.getElementById('map');
+
+            if (!chart || !mapEl || !buttons.length) {
+                return;
+            }
+
+            function setActive(view) {
+                buttons.forEach(btn => {
+                    const isActive = btn.dataset.view === view;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-pressed', isActive);
+                });
+                if (mapEl) {
+                    mapEl.setAttribute('aria-hidden', view === 'bubbles');
+                }
+                const toggle = document.getElementById('view-toggle');
+                if (toggle) toggle.setAttribute('data-active', view);
+            }
+
+            function switchView(view) {
+                if (view === currentView) {
+                    return;
+                }
+                currentView = view;
+
+                if (view === 'map') {
+                    chart.style.display = 'none';
+                    mapEl.style.display = 'block';
+                    if (bounceControls) {
+                        bounceControls.stop();
+                    }
+                    closeCard();
+                    requestAnimationFrame(() => {
+                        if (mapState.render) {
+                            mapState.render();
+                        }
+                    });
+                } else {
+                    mapEl.style.display = 'none';
+                    chart.style.display = 'block';
+                    if (bounceControls) {
+                        bounceControls.start();
+                    }
+                    hideGlobalMapTooltip();
+                }
+
+                setActive(view);
+            }
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => switchView(btn.dataset.view));
+            });
+
+            setActive(currentView);
         }
 
         function showCard(restaurant) {
