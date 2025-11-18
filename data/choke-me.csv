@@ -1,8 +1,8 @@
 restaurant_name,borough,neighborhood,cuisine,style,position,image_filename
 Olde Brooklyn Bagel Shoppe,Brooklyn,Prospect Heights,American,Contemporary,Counter Zone,1
-Fools Gold NYC,Manhattan,Lower East Side,American,Contemporary,Eye Level,2
+Fools Gold NYC,Manhattan,Lower East Side,American,Contemporary,Eye Level,4
 Twins Lounge,Brooklyn,Williamsburg,Bar,Retro,Eye Level,3
-Café Habana,Manhattan,Nolita,Cuban,Handmade,Bathroom Shrine,4
+Café Habana,Manhattan,Nolita,Cuban,Handmade,Bathroom Shrine,2
 Las’ Lap,Manhattan,Lower East Side,Bar,Retro,Hallway Niche,5
 Fools Gold NYC,Manhattan,Lower East Side,American,Contemporary,Eye Level,6
 Urban Outfitters,Manhattan,East Village,Retail,Minimalist,Eye Level,7
@@ -10,24 +10,41 @@ Five Leaves,Brooklyn,Greenpoint,American,Handmade,Above the Sink,8
 375° Chicken 'n Fries,Manhattan,Lower East Side,American,Contemporary,Eye Level,9
 Two Hands Corn Dogs,Manhattan,Nolita,Korean,Retro,Behind the Drinks,10
 Eyval,Brooklyn,Bushwick,Persian,Handmade,Eye Level,11
-Los Tacos 1,Manhattan,NoHo,Mexican,Traditional,Hidden Spot,12
+Los Tacos 1,Manhattan,Noho,Mexican,Traditional,Hidden Spot,12
 MáLà Project,Manhattan,East Village,Chinese,Vintage,Hallway Niche,13
-Shake Shack,Manhattan,NoHo,American,Modern,Above the Sink,14
+Shake Shack,Manhattan,Noho,American,Modern,Above the Sink,14
 Gimme Coffee,Brooklyn,Williamsburg,Coffee,Contemporary,Counter Zone,15
 Time Again,Manhattan,Lower East Side,Bar,Handmade,Hidden Spot,16
 Chez Fifi,Manhattan,Upper East Side,French,Retro,Near Exit Sign,17
 Otafuku,Manhattan,East Village,Japanese,Vintage,Hidden Spot,18
-KGB Bar,,,,,,
-Lucali,,,,,,
-MUD,,,,,,
-Fish Cheeks,,,,,,
-Raoul’s,,,,,,
-C as in Charlie,,,,,,
-Balthazar,,,,,,
-Katz’s,,,,,,
-Bubby’s,,,,,,
-Cafe Habana,,,,,,
-Funny Face Bakery,,,,,,
-Kazu Nori,,,,,,
-L’industrie Pizzeria,,,,,,
-Mimi’s Frozen Yogurt,,,,,,
+Leyenda,Brooklyn,Carroll Gardens,Mexican,Retro,Eye Level,19
+Van Leeuwen Ice Cream,Manhattan,Upper West Side,Ice Cream,Vintage,Hallway Niche,20
+Oslo Coffee Roasters,Manhattan,West Village,Coffee,Contemporary,Hidden Spot,21
+KGB Bar,Manhattan,East Village,Bar,Contemporary,Hallway Niche,22
+Lucali,Manhattan,Carroll Gardens,Pizza,Traditional,Eye Level,23
+MUD,Manhattan,East Village,Coffee,Modern,Near Exit Sign,24
+Fish Cheeks,Manhattan,Noho,Thai,Retro,Hallway Niche,25
+Raoul’s,Manhattan,Soho,French,Contemporary,Hidden Spot,26
+C as in Charlie,Manhattan,Noho,"Korean, American",Retro,Bathroom Shrine,27
+Balthazar,,,,,,28
+Katz’s,Manhattan,Lower East Side,Jewish,,Hidden Spot,29
+Bubby’s,,,,,,30
+Tacombi,Manhattan,Nolita,Mexican,Retro,Bathroom Shrine,31
+Funny Face Bakery,,,,,,32
+Kazu Nori,Manhattan,Midtown East,Japanese,Modern,Near Exit Sign,33
+L’industrie Pizzeria,Brooklyn,Williamsburg,Italian,Vintage,Above the Sink,34
+Mimi’s Frozen Yogurt,Manhattan,Nolita,Froyo,Minimalist,Above the Sink,35
+The Lions,,,,,,36
+Patisserie Fouet,Manhattan,Hell’s Kitchen,"French, Japanese",Minimalist,Eye Level,37
+Son del North,Manhattan,Lower East Side,Mexican,Contemporary,Counter Zone,38
+The Bedford,Brooklyn,Greenpoint,American,Handmade,Behind the Drinks,39
+Taco Dumbo,Brooklyn,Dumbo,Mexican,Retro,Behind the Drinks,40
+Tal Bagels,Manhattan,Gramercy,American,Retro,Near Exit Sign,41
+Caffè Panna,Manhattan,Gramercy,,,,42
+Sofreh,Brooklyn,Prospect Heights,Persian,Modern,Hallway Niche,43
+Oxomoco,Brooklyn,Greenpoint,Mexican,Contemporary,Eye Level,44
+Barney Greengrass,Brooklyn,Upper West Side,Jewish,,,45
+Gjelina,Manhattan,Noho,Mediterranean,,,46
+310 Bowery Bar,Manhattan,Noho,Bar,Retro,Hidden Spot,47
+Dirty Precious,Brooklyn,Gowanus,Bar,Contemporary,Eye Level,48
+French Louie,Brooklyn,Cobble Hill,French,Vintage,Hallway Niche,49
