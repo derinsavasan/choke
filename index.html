@@ -118,6 +118,82 @@
             margin-left: auto;
             margin-right: auto;
         }
+        #legend-hotspot {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            z-index: 2600;
+            pointer-events: none;
+        }
+        #legend-button {
+            position: absolute;
+            bottom: 2vw;
+            right: 2vw;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #0f0f10;
+            color: #fff;
+            font-weight: 700;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.24);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.25s ease, transform 0.25s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        #legend-button.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #legend-button:focus-visible {
+            outline: 2px solid #555;
+            outline-offset: 3px;
+        }
+        #legend-panel {
+            position: absolute;
+            bottom: calc(2vw + 64px);
+            right: 2vw;
+            min-width: 300px;
+            max-width: min(420px, 44vw);
+            padding: 18px 20px;
+            background: rgba(255,255,255,0.96);
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+        }
+        #legend-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        #legend-panel p {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #0f0f10;
+            margin-bottom: 8px;
+        }
+        #legend-panel ul {
+            list-style: none;
+        }
+        #legend-panel li {
+            font-size: 15px;
+            line-height: 1.4;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        #legend-panel b {
+            font-weight: 700;
+        }
         #map-compare {
             position: fixed;
             top: 2vw;
@@ -337,6 +413,21 @@
         <div class="tooltip-title"></div>
         <div class="tooltip-details"></div>
     </div>
+    <div id="legend-hotspot" aria-hidden="true">
+        <div id="legend-button" aria-label="Show legend" role="button" tabindex="0">?</div>
+        <div id="legend-panel" role="dialog" aria-modal="false" aria-label="Position legend">
+            <ul>
+                <li><b>Eye Level:</b> directly in front of guests</li>
+                <li><b>Hidden Spot:</b> tucked out of main view</li>
+                <li><b>Hallway Niche:</b> narrow connector spaces between rooms</li>
+                <li><b>Bathroom Shrine:</b> inside bathroom walls/stalls</li>
+                <li><b>Counter Zone:</b> at service and ordering counters</li>
+                <li><b>Above the Sink:</b> mounted over sink areas</li>
+                <li><b>Behind the Drinks:</b> behind fridges or bar backs</li>
+                <li><b>Near Exit Sign:</b> next to doors and exit signage</li>
+            </ul>
+        </div>
+    </div>
     <div id="corner-image">
         <img id="corner-img" src="" alt="Restaurant">
     </div>
@@ -366,6 +457,11 @@
         const mapCompareEl = document.getElementById('map-compare');
         const mapCompareRestaurantImg = document.getElementById('map-compare-restaurant');
         const mapCompareRestaurantCaption = document.getElementById('map-compare-restaurant-caption');
+        const legendHotspot = document.getElementById('legend-hotspot');
+        const legendButton = document.getElementById('legend-button');
+        const legendPanel = document.getElementById('legend-panel');
+        let legendOpen = false;
+        const LEGEND_HOVER_MARGIN = 220;
         let currentView = 'bubbles';
         const colorCache = new Map();
         let cardAccentToken = 0;
@@ -397,6 +493,13 @@
                 mapCompareEl.classList.remove('visible');
                 mapCompareEl.setAttribute('aria-hidden', 'true');
             }
+        }
+
+        function closeLegend() {
+            if (!legendPanel) return;
+            legendPanel.classList.remove('visible');
+            legendPanel.setAttribute('aria-hidden', 'true');
+            legendOpen = false;
         }
 
         // Load data and initialize visualization: read CSV (primary), metadata lookup, and borough geojson
@@ -804,6 +907,7 @@
                 if (d.type === 'cluster') {
                     hideTooltip();
                     hideMapCompare();
+                    closeLegend();
                     return;
                 }
                 tooltipTitle.text(d.restaurant_name || 'Unknown');
@@ -823,6 +927,9 @@
                 selection
                     .on('mouseenter', (event, d) => {
                         event.stopPropagation();
+                        if (d.type === 'point') {
+                            d3.select(event.currentTarget).select('circle').style('fill', '#d11a2a');
+                        }
                         updateTooltip(event, d);
                         if (d.type === 'point' && mapCompareEl && currentView === 'map') {
                             const posterSrc = d.image_filename ? `data/${d.image_filename}` : '';
@@ -842,9 +949,13 @@
                                 .style('top', `${event.clientY + 16}px`);
                         }
                     })
-                    .on('mouseleave', () => {
+                    .on('mouseleave', (event) => {
+                        d3.select(event.currentTarget).select('circle').style('fill', null);
                         hideTooltip();
                         hideMapCompare();
+                        if (!legendOpen) {
+                            closeLegend();
+                        }
                     })
                     .on('click', (event, d) => {
                         event.stopPropagation();
@@ -985,6 +1096,44 @@
                 hideTooltip();
                 closeCard();
             });
+
+            // Legend interactions
+            if (legendHotspot && legendButton && legendPanel) {
+                const handleMouseMove = (e) => {
+                    const dx = window.innerWidth - e.clientX;
+                    const dy = window.innerHeight - e.clientY;
+                    const nearCorner = dx <= LEGEND_HOVER_MARGIN && dy <= LEGEND_HOVER_MARGIN;
+                    if (nearCorner || legendOpen) {
+                        legendButton.classList.add('show');
+                    } else if (!legendOpen) {
+                        legendButton.classList.remove('show');
+                    }
+                };
+
+                const toggleLegend = () => {
+                    legendOpen = !legendOpen;
+                    legendPanel.classList.toggle('visible', legendOpen);
+                    legendPanel.setAttribute('aria-hidden', legendOpen ? 'false' : 'true');
+                    legendButton.classList.add('show'); // keep button visible; hide only on hover out
+                };
+
+                legendButton.addEventListener('click', toggleLegend);
+                legendButton.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleLegend();
+                    }
+                });
+
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('click', (e) => {
+                    if (!legendOpen) return;
+                    const clickedLegend = legendPanel.contains(e.target) || legendButton.contains(e.target);
+                    if (!clickedLegend) {
+                        closeLegend();
+                    }
+                });
+            }
         }
 
         function setupViewToggle() {
@@ -1046,6 +1195,8 @@
                         mapInfoEl.classList.remove('visible');
                         mapInfoEl.setAttribute('aria-hidden', 'true');
                     }
+                    hideMapCompare();
+                    closeLegend();
                 }
 
                 setActive(view);
