@@ -63,28 +63,97 @@
             background: rgba(255, 255, 255, 0.95);
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            padding: 10px 12px;
+            padding: 12px 14px;
             z-index: 2600;
-            width: 160px;
-        }
-        #map-tooltip img {
-            width: 100%;
-            height: auto;
-            border-radius: 10px;
-            display: block;
-            margin-bottom: 8px;
+            min-width: 170px;
         }
         #map-tooltip .tooltip-title {
-            font-size: 16px;
+            font-size: 17px;
             font-weight: 700;
             color: #111;
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         #map-tooltip .tooltip-details {
-            font-size: 13px;
+            font-size: 14px;
             color: #555;
             text-align: center;
+            line-height: 1.3;
+        }
+        #map-info {
+            position: fixed;
+            top: 2vw;
+            left: 2vw;
+            max-width: clamp(220px, 26vw, 320px);
+            z-index: 2400;
+            color: #0f0f10;
+            line-height: 1.5;
+            font-size: clamp(13px, 1.3vw, 18px);
+            font-weight: 400;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+        }
+        #map-info.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #map-info img {
+            width: 92%;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #map-info .map-info-caption {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #444;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            text-align: right;
+            width: 92%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #map-compare {
+            position: fixed;
+            top: 2vw;
+            left: 2vw;
+            display: flex;
+            gap: 14px;
+            z-index: 2450;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #map-compare.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .map-compare-card {
+            display: flex;
+            flex-direction: column;
+            width: clamp(140px, 15vw, 200px);
+            align-items: flex-end;
+        }
+        .map-compare-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.16);
+        }
+        .map-compare-card .caption {
+            margin-top: 6px;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: #444;
+            text-align: right;
+            width: 100%;
         }
         svg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
         #chart.dimmed {
@@ -111,7 +180,7 @@
             padding: 10px 0;
             border-radius: 999px;
             font-family: 'Cabin', sans-serif;
-            font-size: 16px;
+            font-size: 17px;
             font-weight: 600;
             cursor: pointer;
             color: rgba(255,255,255,0.7);
@@ -211,7 +280,7 @@
         }
         #welcome-message p {
             font-family: 'Cabin', sans-serif;
-            font-size: clamp(13px, 1.2vw, 16px);
+            font-size: clamp(14px, 1.3vw, 18px);
             line-height: 1.5;
             margin-bottom: 0;
         }
@@ -249,8 +318,22 @@
     </div>
     <div id="chart"></div>
     <div id="map" aria-hidden="true"></div>
+    <div id="map-info" aria-hidden="true">
+        <p>NYC Health needed a fast, jargon-free way to teach the maneuver, so they used a bold, cartoon-style diagram that can be absorbed in seconds. Zoom in to explore the pins and compare each restaurant's poster to NYC's sample version.</p>
+        <img src="data/choking-poster-sample.png" alt="Sample NYC choking poster">
+        <div class="map-info-caption">Sample NYC choking poster</div>
+    </div>
+    <div id="map-compare" aria-hidden="true">
+        <div class="map-compare-card">
+            <img id="map-compare-sample" src="data/choking-poster-sample.png" alt="Sample NYC choking poster">
+            <div class="caption">Sample NYC choking poster</div>
+        </div>
+        <div class="map-compare-card">
+            <img id="map-compare-restaurant" src="" alt="Restaurant poster">
+            <div class="caption" id="map-compare-restaurant-caption"></div>
+        </div>
+    </div>
     <div id="map-tooltip">
-        <img src="" alt="" />
         <div class="tooltip-title"></div>
         <div class="tooltip-details"></div>
     </div>
@@ -279,9 +362,15 @@
         let bounceControls = null;
         const mapState = { render: null };
         const mapTooltipEl = document.getElementById('map-tooltip');
+        const mapInfoEl = document.getElementById('map-info');
+        const mapCompareEl = document.getElementById('map-compare');
+        const mapCompareRestaurantImg = document.getElementById('map-compare-restaurant');
+        const mapCompareRestaurantCaption = document.getElementById('map-compare-restaurant-caption');
         let currentView = 'bubbles';
         const colorCache = new Map();
         let cardAccentToken = 0;
+        // Toggle to exclude rows that do not have a resolvable image; set to false to fall back to the placeholder instead
+        const hideEntriesWithoutImages = true;
 
         // Show welcome message
         const welcome = document.getElementById('welcome-message');
@@ -303,6 +392,13 @@
             }
         }
 
+        function hideMapCompare() {
+            if (mapCompareEl) {
+                mapCompareEl.classList.remove('visible');
+                mapCompareEl.setAttribute('aria-hidden', 'true');
+            }
+        }
+
         // Load data and initialize visualization: read CSV (primary), metadata lookup, and borough geojson
         Promise.all([
             d3.csv('data/choke-me.csv'),
@@ -318,21 +414,25 @@
             });
 
             // Resolve CSV rows to restaurant objects (use heimlich.png as placeholder when missing)
-            const restaurants = csvRows.map((row, index) => {
+            const restaurantsAll = csvRows.map((row, index) => {
                 const imgField = (row.image_filename || '').toString().trim();
+                let hasAssignedImage = false;
                 let filename = null;
                 if (!imgField) {
                     filename = 'heimlich.png';
                 } else if (availableKeys.has(imgField)) {
                     filename = imgField;
+                    hasAssignedImage = true;
                 } else if (stemToKey[imgField]) {
                     filename = stemToKey[imgField];
+                    hasAssignedImage = true;
                 } else {
                     // try common extensions
                     const exts = ['.png', '.PNG', '.jpg', '.jpeg'];
                     for (const ex of exts) {
                         if (availableKeys.has(imgField + ex)) {
                             filename = imgField + ex;
+                            hasAssignedImage = true;
                             break;
                         }
                     }
@@ -353,9 +453,14 @@
                     position: row.position || '',
                     uid,
                     latitude: Number.isFinite(lat) ? lat : null,
-                    longitude: Number.isFinite(lon) ? lon : null
+                    longitude: Number.isFinite(lon) ? lon : null,
+                    hasAssignedImage
                 };
             });
+
+            const restaurants = hideEntriesWithoutImages
+                ? restaurantsAll.filter(r => r.hasAssignedImage)
+                : restaurantsAll;
 
             const data = layoutSpiral(restaurants, width, height, radius, step);
             const svg = createSVG();
@@ -612,7 +717,6 @@
             }
 
             const tooltip = d3.select('#map-tooltip');
-            const tooltipImg = tooltip.select('img');
             const tooltipTitle = tooltip.select('.tooltip-title');
             const tooltipDetails = tooltip.select('.tooltip-details');
 
@@ -698,16 +802,13 @@
 
             function updateTooltip(event, d) {
                 if (d.type === 'cluster') {
-                    tooltipImg.style('display', 'none');
-                    tooltipTitle.text(`${d.count} poster${d.count === 1 ? '' : 's'}`);
-                    tooltipDetails.text('Zoom in to see individual locations.');
-                } else {
-                    tooltipImg.style('display', 'block');
-                    tooltipImg.attr('src', `data/${d.image_filename}`);
-                    tooltipImg.attr('alt', d.restaurant_name || 'Restaurant');
-                    tooltipTitle.text(d.restaurant_name || 'Unknown');
-                    tooltipDetails.text(d.position || '');
+                    hideTooltip();
+                    hideMapCompare();
+                    return;
                 }
+                tooltipTitle.text(d.restaurant_name || 'Unknown');
+                const metaParts = [d.cuisine, d.style, d.position].map(v => (v || '').trim()).filter(Boolean);
+                tooltipDetails.text(metaParts.join(' \u00b7 ') || '');
                 tooltip
                     .style('display', 'block')
                     .style('left', `${event.clientX + 16}px`)
@@ -723,6 +824,16 @@
                     .on('mouseenter', (event, d) => {
                         event.stopPropagation();
                         updateTooltip(event, d);
+                        if (d.type === 'point' && mapCompareEl && currentView === 'map') {
+                            const posterSrc = d.image_filename ? `data/${d.image_filename}` : '';
+                            mapCompareRestaurantImg?.setAttribute('src', posterSrc);
+                            mapCompareRestaurantImg?.setAttribute('alt', d.restaurant_name || 'Restaurant poster');
+                            if (mapCompareRestaurantCaption) {
+                                mapCompareRestaurantCaption.textContent = d.restaurant_name || '';
+                            }
+                            mapCompareEl.classList.add('visible');
+                            mapCompareEl.setAttribute('aria-hidden', 'false');
+                        }
                     })
                     .on('mousemove', (event, d) => {
                         if (tooltip.style('display') === 'block') {
@@ -731,7 +842,10 @@
                                 .style('top', `${event.clientY + 16}px`);
                         }
                     })
-                    .on('mouseleave', hideTooltip)
+                    .on('mouseleave', () => {
+                        hideTooltip();
+                        hideMapCompare();
+                    })
                     .on('click', (event, d) => {
                         event.stopPropagation();
                         if (d.type === 'cluster') {
@@ -804,6 +918,14 @@
 
                 const k = currentTransform.k || 1;
                 const showClusters = k < 2.3;
+                if (mapInfoEl) {
+                    const shouldShowInfo = currentView === 'map' && showClusters;
+                    mapInfoEl.classList.toggle('visible', shouldShowInfo);
+                    mapInfoEl.setAttribute('aria-hidden', shouldShowInfo ? 'false' : 'true');
+                }
+                if (mapCompareEl && showClusters) {
+                    hideMapCompare();
+                }
 
                 if (showClusters) {
                     plottedRestaurants.forEach(pt => {
@@ -822,7 +944,9 @@
                         restaurant_name: pt.restaurant_name,
                         neighborhood: pt.neighborhood,
                         borough: pt.borough,
-                        position: pt.position
+                        position: pt.position,
+                        cuisine: pt.cuisine,
+                        style: pt.style
                     }));
                 }
 
@@ -832,13 +956,6 @@
                         const g = enter.append('g')
                             .attr('class', 'map-marker');
                         g.append('circle');
-                        g.append('text')
-                            .attr('class', 'cluster-count')
-                            .attr('text-anchor', 'middle')
-                            .attr('dy', '0.35em')
-                            .style('font-size', '10px')
-                            .style('font-weight', '600')
-                            .style('pointer-events', 'none');
                         return g;
                     });
 
@@ -850,12 +967,6 @@
                     .attr('r', d => d.type === 'cluster' ? Math.min(16, 8 + Math.log2(d.count) * 3) : 6)
                     .attr('cx', d => d.x)
                     .attr('cy', d => d.y);
-
-                markers.select('text')
-                    .text(d => d.type === 'cluster' ? d.count : '')
-                    .attr('x', d => d.x)
-                    .attr('y', d => d.y)
-                    .style('fill', d => d.type === 'cluster' ? '#fff' : '#111');
 
                 attachInteractions(markers);
             }
@@ -905,6 +1016,9 @@
                 currentView = view;
 
                 if (view === 'map') {
+                    if (mapInfoEl) {
+                        mapInfoEl.style.transition = 'none'; // prevent initial fade-in
+                    }
                     chart.style.display = 'none';
                     mapEl.style.display = 'block';
                     if (bounceControls) {
@@ -915,6 +1029,11 @@
                         if (mapState.render) {
                             mapState.render();
                         }
+                        requestAnimationFrame(() => {
+                            if (mapInfoEl) {
+                                mapInfoEl.style.transition = '';
+                            }
+                        });
                     });
                 } else {
                     mapEl.style.display = 'none';
@@ -923,6 +1042,10 @@
                         bounceControls.start();
                     }
                     hideGlobalMapTooltip();
+                    if (mapInfoEl) {
+                        mapInfoEl.classList.remove('visible');
+                        mapInfoEl.setAttribute('aria-hidden', 'true');
+                    }
                 }
 
                 setActive(view);
