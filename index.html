@@ -36,6 +36,9 @@
             height: 100%;
             display: block;
         }
+        /* Use default Leaflet fonts, but run tiles in monochrome for clarity */
+        #map .leaflet-container { font-family: inherit; }
+        #map .leaflet-tile-pane { filter: grayscale(1) brightness(0.96) contrast(1.04); }
         .map-boroughs path {
             stroke-width: 2;
             stroke-linejoin: round;
@@ -55,6 +58,12 @@
             fill: #0f0f10;
             stroke: #fff;
             stroke-width: 1;
+        }
+        .map-dim path { pointer-events: none; }
+        #map-dim-overlay { display: none; }
+        /* Hide Leaflet attribution bar (also removes flag/emoji/footer) */
+        .leaflet-control-attribution {
+            display: none;
         }
         #map-tooltip {
             position: fixed;
@@ -93,6 +102,11 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.6s ease;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.82);
+            border-radius: 14px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+            backdrop-filter: blur(6px);
         }
         #map-info.visible {
             opacity: 1;
@@ -204,6 +218,11 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+            backdrop-filter: blur(6px);
         }
         #map-compare.visible {
             opacity: 1;
@@ -231,7 +250,8 @@
             text-align: right;
             width: 100%;
         }
-        svg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+        /* Keep the bubble chart full-viewport without affecting Leaflet's SVG overlays */
+        #chart > svg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
         #chart.dimmed {
             opacity: 0.5;
         }
@@ -454,6 +474,9 @@
         const mapState = { render: null };
         const mapTooltipEl = document.getElementById('map-tooltip');
         const mapInfoEl = document.getElementById('map-info');
+        if (mapInfoEl) {
+            mapInfoEl.style.transition = 'opacity 0.6s ease';
+        }
         const mapCompareEl = document.getElementById('map-compare');
         const mapCompareRestaurantImg = document.getElementById('map-compare-restaurant');
         const mapCompareRestaurantCaption = document.getElementById('map-compare-restaurant-caption');
@@ -823,85 +846,53 @@
             const tooltipTitle = tooltip.select('.tooltip-title');
             const tooltipDetails = tooltip.select('.tooltip-details');
 
-            const svg = d3.select(mapElement)
-                .append('svg')
-                .attr('class', 'map-svg');
+            const leafletMap = L.map(mapElement, {
+                zoomControl: false,
+                minZoom: 11,
+                maxZoom: 19,
+                scrollWheelZoom: true,
+                doubleClickZoom: false,
+                preferCanvas: true
+            });
 
-            const zoomGroup = svg.append('g').attr('class', 'map-zoom-layer');
-            const boroughLayer = zoomGroup.append('g').attr('class', 'map-boroughs');
-            const markerLayer = svg.append('g').attr('class', 'map-markers');
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 18
+            }).addTo(leafletMap);
 
-            const plottedRestaurants = restaurants.filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
+            // Overlay labels; use Carto's label layer to bring back streets, parks, neighborhoods
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 18,
+                zIndex: 100
+            }).addTo(leafletMap);
 
-            let projection = null;
-            let currentTransform = d3.zoomIdentity;
-            let displayNodes = [];
-            const MIN_ZOOM = 1.1;
-            const MAX_ZOOM = 8;
-            let initialZoomApplied = false;
-
-            const zoom = d3.zoom()
-                .scaleExtent([MIN_ZOOM, MAX_ZOOM])
-                .on('zoom', event => {
-                    currentTransform = event.transform;
-                    zoomGroup.attr('transform', currentTransform);
-                    positionMarkers();
-                });
-
-            svg.call(zoom).on('dblclick.zoom', null);
-
-            const render = () => {
-                const width = mapElement.clientWidth || window.innerWidth || 800;
-                const height = mapElement.clientHeight || window.innerHeight || 600;
-                svg.attr('viewBox', `0 0 ${width} ${height}`);
-                zoom.translateExtent([[0, 0], [width, height]]).extent([[0, 0], [width, height]]);
-
-                projection = d3.geoMercator()
-                    .fitExtent([[80, 40], [width - 80, height - 40]], {
-                        type: 'FeatureCollection',
-                        features: boroughFeatures
-                    });
-
-                const path = d3.geoPath(projection);
-
-                const zoomScale = currentTransform ? currentTransform.k : 1;
-                const base = 1.6;
-                const min = 0.45;
-                const max = 2.4;
-                const exponent = 0.75;
-                let strokeWidth = base / Math.pow(zoomScale, exponent);
-                strokeWidth = Math.min(max, Math.max(min, strokeWidth));
-
-                boroughLayer.selectAll('path')
-                    .data(boroughFeatures)
-                    .join('path')
-                    .attr('d', path)
-                    .attr('fill', '#f7f8fb')
-                    .attr('stroke', '#111')
-                    .attr('stroke-width', strokeWidth)
-                    .attr('stroke-linejoin', 'round')
-                    .attr('stroke-linecap', 'round')
-                    .attr('vector-effect', 'non-scaling-stroke');
-
-                plottedRestaurants.forEach(d => {
-                    const projected = projection([d.longitude, d.latitude]);
-                    d._mapX = projected ? projected[0] : -999;
-                    d._mapY = projected ? projected[1] : -999;
-                });
-
-                positionMarkers();
-                if (!initialZoomApplied) {
-                    initialZoomApplied = true;
-                    const center = [width / 2, height / 2];
-                    const baseTransform = d3.zoomIdentity
-                        .translate(center[0], center[1])
-                        .scale(MIN_ZOOM)
-                        .translate(-center[0], -center[1]);
-                    currentTransform = baseTransform;
-                    svg.call(zoom.transform, baseTransform);
+            const boroughLayer = L.geoJSON({
+                type: 'FeatureCollection',
+                features: boroughFeatures
+            }, {
+                style: {
+                    color: '#111',
+                    weight: 2,
+                    fillColor: '#f7f8fb',
+                    fillOpacity: 0.08
                 }
-                zoomGroup.attr('transform', currentTransform);
-            };
+            }).addTo(leafletMap);
+
+            const markerLayer = L.layerGroup().addTo(leafletMap);
+
+
+            const plottedRestaurants = restaurants
+                .filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
+                .map(r => ({
+                    ...r,
+                    latLng: L.latLng(r.latitude, r.longitude)
+                }));
+
+            const CLUSTER_ZOOM_THRESHOLD = 14;
+            const CLUSTER_PIXEL_THRESHOLD = 48;
 
             function updateTooltip(event, d) {
                 if (d.type === 'cluster') {
@@ -923,112 +914,10 @@
                 tooltip.style('display', 'none');
             }
 
-            function attachInteractions(selection) {
-                selection
-                    .on('mouseenter', (event, d) => {
-                        event.stopPropagation();
-                        if (d.type === 'point') {
-                            d3.select(event.currentTarget).select('circle').style('fill', '#d11a2a');
-                        }
-                        updateTooltip(event, d);
-                        if (d.type === 'point' && mapCompareEl && currentView === 'map') {
-                            const posterSrc = d.image_filename ? `data/${d.image_filename}` : '';
-                            mapCompareRestaurantImg?.setAttribute('src', posterSrc);
-                            mapCompareRestaurantImg?.setAttribute('alt', d.restaurant_name || 'Restaurant poster');
-                            if (mapCompareRestaurantCaption) {
-                                mapCompareRestaurantCaption.textContent = d.restaurant_name || '';
-                            }
-                            mapCompareEl.classList.add('visible');
-                            mapCompareEl.setAttribute('aria-hidden', 'false');
-                        }
-                    })
-                    .on('mousemove', (event, d) => {
-                        if (tooltip.style('display') === 'block') {
-                            tooltip
-                                .style('left', `${event.clientX + 16}px`)
-                                .style('top', `${event.clientY + 16}px`);
-                        }
-                    })
-                    .on('mouseleave', (event) => {
-                        d3.select(event.currentTarget).select('circle').style('fill', null);
-                        hideTooltip();
-                        hideMapCompare();
-                        if (!legendOpen) {
-                            closeLegend();
-                        }
-                    })
-                    .on('click', (event, d) => {
-                        event.stopPropagation();
-                        if (d.type === 'cluster') {
-                            svg.transition().duration(350).call(
-                                zoom.scaleBy,
-                                1.6,
-                                [d.x, d.y]
-                            );
-                        }
-                    });
-            }
-
-            function buildClusters(points, thresholdPx) {
-                const clusters = [];
-                const cellSize = thresholdPx;
-                const grid = new Map();
-
-                const keyFor = (x, y) => `${Math.floor(x / cellSize)}-${Math.floor(y / cellSize)}`;
-
-                points.forEach(pt => {
-                    const key = keyFor(pt._screenX, pt._screenY);
-                    let cluster = grid.get(key);
-                    if (!cluster) {
-                        cluster = {
-                            id: `cluster-${key}-${clusters.length}`,
-                            type: 'cluster',
-                            x: pt._screenX,
-                            y: pt._screenY,
-                            count: 1
-                        };
-                        grid.set(key, cluster);
-                        clusters.push(cluster);
-                    } else {
-                        cluster.count += 1;
-                        cluster.x += (pt._screenX - cluster.x) / cluster.count;
-                        cluster.y += (pt._screenY - cluster.y) / cluster.count;
-                    }
-                });
-
-                return clusters;
-            }
-
-            function applyDuplicateOffsets(points) {
-                const groups = new Map();
-                points.forEach(pt => {
-                    const key = `${pt._mapX.toFixed(3)}-${pt._mapY.toFixed(3)}`;
-                    if (!groups.has(key)) groups.set(key, []);
-                    groups.get(key).push(pt);
-                });
-
-                groups.forEach(list => {
-                    if (list.length === 1) {
-                        list[0]._screenX = currentTransform.applyX(list[0]._mapX);
-                        list[0]._screenY = currentTransform.applyY(list[0]._mapY);
-                        return;
-                    }
-                    const radius = 10;
-                    list.forEach((pt, idx) => {
-                        const angle = (idx / list.length) * Math.PI * 2;
-                        const x = pt._mapX + Math.cos(angle) * radius;
-                        const y = pt._mapY + Math.sin(angle) * radius;
-                        pt._screenX = currentTransform.applyX(x);
-                        pt._screenY = currentTransform.applyY(y);
-                    });
-                });
-            }
-
             function positionMarkers() {
                 if (!plottedRestaurants.length) return;
 
-                const k = currentTransform.k || 1;
-                const showClusters = k < 2.3;
+                const showClusters = (leafletMap.getZoom() || CLUSTER_ZOOM_THRESHOLD) < CLUSTER_ZOOM_THRESHOLD;
                 if (mapInfoEl) {
                     const shouldShowInfo = currentView === 'map' && showClusters;
                     mapInfoEl.classList.toggle('visible', shouldShowInfo);
@@ -1037,59 +926,149 @@
                 if (mapCompareEl && showClusters) {
                     hideMapCompare();
                 }
+                const pointsWithScreen = plottedRestaurants.map(pt => {
+                    const coords = leafletMap.latLngToLayerPoint(pt.latLng);
+                    return { ...pt, _screenX: coords.x, _screenY: coords.y };
+                });
 
-                if (showClusters) {
-                    plottedRestaurants.forEach(pt => {
-                        pt._screenX = currentTransform.applyX(pt._mapX);
-                        pt._screenY = currentTransform.applyY(pt._mapY);
+                const buildClusters = (points, thresholdPx) => {
+                    const clusters = [];
+                    const cellSize = thresholdPx;
+                    const grid = new Map();
+                    const keyFor = (x, y) => `${Math.floor(x / cellSize)}-${Math.floor(y / cellSize)}`;
+                    points.forEach(pt => {
+                        const key = keyFor(pt._screenX, pt._screenY);
+                        let cluster = grid.get(key);
+                        if (!cluster) {
+                            cluster = {
+                                type: 'cluster',
+                                x: pt._screenX,
+                                y: pt._screenY,
+                                latLng: pt.latLng,
+                                count: 1
+                            };
+                            grid.set(key, cluster);
+                            clusters.push(cluster);
+                        } else {
+                            cluster.count += 1;
+                            cluster.x += (pt._screenX - cluster.x) / cluster.count;
+                            cluster.y += (pt._screenY - cluster.y) / cluster.count;
+                        }
                     });
-                    displayNodes = buildClusters(plottedRestaurants, 40);
-                } else {
-                    applyDuplicateOffsets(plottedRestaurants);
-                    displayNodes = plottedRestaurants.map(pt => ({
-                        type: 'point',
-                        id: pt.uid || pt.restaurant_name,
-                        x: pt._screenX,
-                        y: pt._screenY,
-                        image_filename: pt.image_filename,
-                        restaurant_name: pt.restaurant_name,
-                        neighborhood: pt.neighborhood,
-                        borough: pt.borough,
-                        position: pt.position,
-                        cuisine: pt.cuisine,
-                        style: pt.style
-                    }));
-                }
+                    return clusters;
+                };
 
-                const markers = markerLayer.selectAll('g.map-marker')
-                    .data(displayNodes, d => d.id)
-                    .join(enter => {
-                        const g = enter.append('g')
-                            .attr('class', 'map-marker');
-                        g.append('circle');
-                        return g;
+                const applyDuplicateOffsets = (points) => {
+                    const groups = new Map();
+                    points.forEach(pt => {
+                        const key = `${pt.latLng.lat.toFixed(4)}-${pt.latLng.lng.toFixed(4)}`;
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(pt);
                     });
+                    const result = [];
+                    groups.forEach(list => {
+                        if (list.length === 1) {
+                            result.push(list[0]);
+                            return;
+                        }
+                        const radius = 10;
+                        const basePoint = leafletMap.latLngToLayerPoint(list[0].latLng);
+                        list.forEach((pt, idx) => {
+                            const angle = (idx / list.length) * Math.PI * 2;
+                            result.push({
+                                ...pt,
+                                _screenX: basePoint.x + Math.cos(angle) * radius,
+                                _screenY: basePoint.y + Math.sin(angle) * radius
+                            });
+                        });
+                    });
+                    return result;
+                };
 
-                markers
-                    .classed('is-cluster', d => d.type === 'cluster')
-                    .classed('is-point', d => d.type === 'point');
+                const displayNodes = showClusters
+                    ? buildClusters(pointsWithScreen, CLUSTER_PIXEL_THRESHOLD)
+                    : applyDuplicateOffsets(pointsWithScreen).map(pt => ({ ...pt, type: 'point' }));
 
-                markers.select('circle')
-                    .attr('r', d => d.type === 'cluster' ? Math.min(16, 8 + Math.log2(d.count) * 3) : 6)
-                    .attr('cx', d => d.x)
-                    .attr('cy', d => d.y);
+                markerLayer.clearLayers();
 
-                attachInteractions(markers);
+                displayNodes.forEach(node => {
+                    if (node.type === 'cluster') {
+                        const clusterMarker = L.circleMarker(node.latLng, {
+                            radius: Math.min(18, 8 + Math.log2(node.count) * 3),
+                            color: '#fff',
+                            weight: 1.4,
+                            fillColor: '#111',
+                            fillOpacity: 1
+                        }).addTo(markerLayer);
+                        clusterMarker.on('click', () => {
+                            leafletMap.flyTo(node.latLng, Math.min((leafletMap.getZoom() || 12) + 2, 18), { duration: 0.35 });
+                        });
+                    } else {
+                        const marker = L.circleMarker(node.latLng, {
+                            radius: 6,
+                            color: '#fff',
+                            weight: 1,
+                            fillColor: '#0f0f10',
+                            fillOpacity: 1
+                        }).addTo(markerLayer);
+
+                        marker.on('mouseover', (e) => {
+                            if (showClusters) return;
+                            e.originalEvent?.stopPropagation();
+                            marker.setStyle({ fillColor: '#d11a2a' });
+                            updateTooltip(e.originalEvent || e, { ...node, type: 'point' });
+                            if (mapCompareEl && currentView === 'map') {
+                                const posterSrc = node.image_filename ? `data/${node.image_filename}` : '';
+                                mapCompareRestaurantImg?.setAttribute('src', posterSrc);
+                                mapCompareRestaurantImg?.setAttribute('alt', node.restaurant_name || 'Restaurant poster');
+                                if (mapCompareRestaurantCaption) {
+                                    mapCompareRestaurantCaption.textContent = node.restaurant_name || '';
+                                }
+                                mapCompareEl.classList.add('visible');
+                                mapCompareEl.setAttribute('aria-hidden', 'false');
+                            }
+                        });
+
+                        marker.on('mousemove', (e) => {
+                            if (showClusters) return;
+                            if (tooltip.style('display') === 'block') {
+                                tooltip
+                                    .style('left', `${(e.originalEvent?.clientX || 0) + 16}px`)
+                                    .style('top', `${(e.originalEvent?.clientY || 0) + 16}px`);
+                            }
+                        });
+
+                        marker.on('mouseout', () => {
+                            marker.setStyle({ fillColor: '#0f0f10' });
+                            hideTooltip();
+                            hideMapCompare();
+                            if (!legendOpen) {
+                                closeLegend();
+                            }
+                        });
+                    }
+                });
             }
 
-            render();
+            const bounds = boroughLayer.getBounds().pad(0.2);
+            leafletMap.fitBounds(bounds);
+            positionMarkers();
+
+            leafletMap.on('zoomend moveend', () => {
+                hideTooltip();
+                positionMarkers();
+            });
+
             window.addEventListener('resize', () => {
                 hideTooltip();
-                render();
+                leafletMap.invalidateSize();
+                positionMarkers();
             });
+
             mapState.render = () => {
                 hideTooltip();
-                render();
+                leafletMap.invalidateSize();
+                positionMarkers();
             };
 
             d3.select(mapElement).on('click', () => {
