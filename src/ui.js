@@ -27,6 +27,7 @@ export function setupViewToggle(data) {
   const chart = document.getElementById('chart');
   const mapEl = document.getElementById('map');
   const matrixEl = dom.matrixView;
+  const matrixReset = document.getElementById('matrix-reset');
   const togglePill = document.querySelector('#view-toggle .toggle-pill');
   const views = ['bubbles', 'map', 'matrix'];
   let mapInitialized = false;
@@ -57,6 +58,7 @@ export function setupViewToggle(data) {
       chart.style.display = 'none';
       mapEl.style.display = 'block';
       if (matrixEl) matrixEl.style.display = 'none';
+      if (matrixReset) matrixReset.style.display = 'none';
       if (appState.bounceControls) appState.bounceControls.stop();
       hideCard();
       if (!mapInitialized) {
@@ -73,13 +75,15 @@ export function setupViewToggle(data) {
       chart.style.display = 'none';
       mapEl.style.display = 'none';
       if (matrixEl) matrixEl.style.display = 'block';
+      if (matrixReset) matrixReset.style.display = 'inline-flex';
       if (appState.bounceControls) appState.bounceControls.start();
       hideTooltipsAndCompare();
-      initMatrix();
+      initMatrix({ restaurants: data.restaurants, postersData: data.postersData });
     } else {
       mapEl.style.display = 'none';
       chart.style.display = 'block';
       if (matrixEl) matrixEl.style.display = 'none';
+      if (matrixReset) matrixReset.style.display = 'none';
       if (appState.bounceControls) appState.bounceControls.start();
       hideTooltipsAndCompare();
     }

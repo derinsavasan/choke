@@ -9,7 +9,15 @@ export const appState = {
   currentView: 'bubbles',
   colorCache: new Map(),
   cardAccentToken: 0,
-  matrix: { nodes: null, size: null, svg: null }
+  matrix: {
+    nodes: null,
+    size: null,
+    svg: null,
+    resizeBound: false,
+    hintDismissed: false,
+    hintListenerAttached: false,
+    resetHooked: false
+  }
 };
 
 export const dom = {

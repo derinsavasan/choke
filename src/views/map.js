@@ -233,8 +233,12 @@ export function initMap(payload) {
     });
   }
 
-  const bounds = boroughLayer.getBounds().pad(0.2);
+  const bounds = boroughLayer.getBounds().pad(0.12);
   leafletMap.fitBounds(bounds);
+  const zoomed = Math.min(leafletMap.getZoom() + 2, leafletMap.getMaxZoom() - 1);
+  const center = bounds.getCenter();
+  const offsetLng = -0.05; // stronger westward shift to show less of Queens
+  leafletMap.setView([center.lat, center.lng + offsetLng], zoomed);
   positionMarkers();
 
   leafletMap.on('zoomend moveend', () => {
