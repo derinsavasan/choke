@@ -1,0 +1,26 @@
+/* Matrix view */
+#matrix-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  background: #f7f7f7;
+  z-index: 2000;
+}
+.matrix-svg text {
+  font-family: 'Cabin', sans-serif;
+  fill: #111;
+}
+.matrix-node circle {
+  fill: #0f0f10;
+  stroke: #fff;
+  stroke-width: 1.2;
+  cursor: grab;
+}
+.matrix-node text {
+  fill: #fff;
+  font-size: 13px;
+  pointer-events: none;
+}
