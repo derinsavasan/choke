@@ -2,12 +2,12 @@ Ever since the Department of Health set the requirement for choking-victim poste
 
 ## Screenshots
 
-1-welcome.png  
-2-poster-a.png  
-3-poster-b.png  
-4-map-cluster.png  
-5-map-a.png  
-6-map-b.png  
-7-matrix.png  
-8-matrix-end.png  
-9-matrix-tooltip.png
+![Welcome](1-welcome.png)
+![Posters view A](2-poster-a.png)
+![Posters view B](3-poster-b.png)
+![Map cluster](4-map-cluster.png)
+![Map detail A](5-map-a.png)
+![Map detail B](6-map-b.png)
+![Matrix view](7-matrix.png)
+![Matrix end](8-matrix-end.png)
+![Matrix tooltip](9-matrix-tooltip.png)
