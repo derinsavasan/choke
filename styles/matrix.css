@@ -99,3 +99,43 @@
   transform: translateY(0);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
+
+/* Matrix preview tooltip */
+#matrix-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 2600;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+#matrix-preview.open {
+  display: block;
+  opacity: 1;
+}
+.matrix-preview-frame {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  display: block;
+}
+.matrix-preview-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.matrix-preview-caption {
+  display: none;
+}

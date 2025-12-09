@@ -26,7 +26,8 @@ export const dom = {
   mapCompare: document.getElementById('map-compare'),
   mapCompareRestaurantImg: document.getElementById('map-compare-restaurant'),
   mapCompareRestaurantCaption: document.getElementById('map-compare-restaurant-caption'),
-  matrixView: document.getElementById('matrix-view')
+  matrixView: document.getElementById('matrix-view'),
+  matrixPreview: document.getElementById('matrix-preview')
 };
 
 // Initialize derived sizes

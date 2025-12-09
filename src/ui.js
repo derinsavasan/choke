@@ -3,6 +3,7 @@ import { initPosters, renderPosters, hideCard } from './views/posters.js';
 import { initMap, renderMap } from './views/map.js';
 import { initMatrix } from './views/matrix.js';
 import { hideTooltipsAndCompare } from './helpers/overlays.js';
+import { hideMatrixPreview } from './views/matrix.js';
 
 export function setupWelcome() {
   const welcome = document.getElementById('welcome-message');
@@ -61,6 +62,7 @@ export function setupViewToggle(data) {
       if (matrixReset) matrixReset.style.display = 'none';
       if (appState.bounceControls) appState.bounceControls.stop();
       hideCard();
+      hideMatrixPreview();
       if (!mapInitialized) {
         initMap(data);
         mapInitialized = true;
@@ -78,6 +80,7 @@ export function setupViewToggle(data) {
       if (matrixReset) matrixReset.style.display = 'inline-flex';
       if (appState.bounceControls) appState.bounceControls.start();
       hideTooltipsAndCompare();
+      hideMatrixPreview();
       initMatrix({ restaurants: data.restaurants, postersData: data.postersData });
     } else {
       mapEl.style.display = 'none';
@@ -86,6 +89,7 @@ export function setupViewToggle(data) {
       if (matrixReset) matrixReset.style.display = 'none';
       if (appState.bounceControls) appState.bounceControls.start();
       hideTooltipsAndCompare();
+      hideMatrixPreview();
     }
     setActive(view);
   };

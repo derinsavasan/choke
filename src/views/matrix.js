@@ -2,6 +2,22 @@ const d3 = window.d3;
 import { appState, dom } from '../state.js';
 import { DATA_PREFIX } from '../config.js';
 
+let previewOutsideHandler = null;
+let previewActiveId = null;
+
+export function hideMatrixPreview() {
+  const preview = dom.matrixPreview;
+  if (!preview) return;
+  if (previewOutsideHandler) {
+    document.removeEventListener('pointerdown', previewOutsideHandler, true);
+    previewOutsideHandler = null;
+  }
+  preview.classList.remove('open');
+  preview.setAttribute('aria-hidden', 'true');
+  preview.style.display = 'none';
+  previewActiveId = null;
+}
+
 export function initMatrix(payload = {}) {
   const matrixEl = dom.matrixView;
   if (!matrixEl) return;
@@ -233,15 +249,23 @@ export function initMatrix(payload = {}) {
       });
 
     const nodeLayer = svg.append('g').attr('class', 'matrix-nodes');
+    let wasDragged = false;
+    let suppressNextClick = false;
     const drag = d3.drag()
       .on('start', function() {
+        wasDragged = false;
         d3.select(this).raise();
+        hideMatrixPreview();
       })
       .on('drag', function(event, d) {
+        wasDragged = true;
         d.x = Math.max(radius, Math.min(width - radius, event.x));
         d.y = Math.max(radius, Math.min(height - radius, event.y));
         d3.select(this).attr('transform', `translate(${d.x},${d.y})`);
         updateQuadrantOpacity();
+      })
+      .on('end', () => {
+        setTimeout(() => { wasDragged = false; }, 0);
       });
 
     const nodeSelection = nodeLayer.selectAll('g.matrix-node')
@@ -250,6 +274,7 @@ export function initMatrix(payload = {}) {
         enter => {
           const g = enter.append('g')
             .attr('class', 'matrix-node')
+            .attr('data-node-id', d => d.id || d.restaurant?.uid || '')
             .attr('transform', d => `translate(${d.x},${d.y})`);
           g.append('circle')
             .attr('r', radius);
@@ -267,6 +292,116 @@ export function initMatrix(payload = {}) {
       .attr('fill', d => `url(#${d.patternId})`);
     nodeSelection.select('title')
       .text(d => d.restaurant.restaurant_name || 'Poster');
+    const preview = dom.matrixPreview;
+    const previewImg = preview ? preview.querySelector('#matrix-preview-img') : null;
+    const previewCaption = preview ? preview.querySelector('.matrix-preview-caption') : null;
+    if (preview) {
+      preview.style.display = 'none';
+      preview.classList.remove('open');
+      preview.setAttribute('aria-hidden', 'true');
+    }
+    const placePreview = (evt, dims) => {
+      if (!preview) return;
+      const targetRect = evt.currentTarget?.getBoundingClientRect();
+      const cx = targetRect ? targetRect.left + targetRect.width / 2 : evt.clientX;
+      const cy = targetRect ? targetRect.top + targetRect.height / 2 : evt.clientY;
+      const clearance = radius + 14;
+      const margin = 10;
+      const vw = window.innerWidth || width;
+      const vh = window.innerHeight || height;
+      const w = dims.width;
+      const h = dims.height;
+      const directions = [
+        { dir: 'right', x: cx + clearance, y: cy - h / 2 },
+        { dir: 'left', x: cx - clearance - w, y: cy - h / 2 },
+        { dir: 'above', x: cx - w / 2, y: cy - clearance - h },
+        { dir: 'below', x: cx - w / 2, y: cy + clearance }
+      ];
+      const clampAndCheck = candidate => {
+        let x = Math.max(margin, Math.min(candidate.x, vw - w - margin));
+        let y = Math.max(margin, Math.min(candidate.y, vh - h - margin));
+        const clearsBall =
+          (candidate.dir === 'right' && x - cx >= clearance) ||
+          (candidate.dir === 'left' && cx - (x + w) >= clearance) ||
+          (candidate.dir === 'above' && cy - (y + h) >= clearance) ||
+          (candidate.dir === 'below' && y - cy >= clearance);
+        return { x, y, clearsBall };
+      };
+      let best = null;
+      for (const cand of directions) {
+        const res = clampAndCheck(cand);
+        if (res.clearsBall) { best = { ...res }; break; }
+      }
+      if (!best) {
+        const res = clampAndCheck({ dir: 'right', x: cx + clearance, y: cy - h / 2 });
+        best = { ...res };
+      }
+      preview.style.left = `${best.x}px`;
+      preview.style.top = `${best.y}px`;
+      preview.style.width = `${w}px`;
+      preview.style.height = `${h}px`;
+    };
+    const computeDims = (img) => {
+      const naturalW = img?.naturalWidth || 320;
+      const naturalH = img?.naturalHeight || 240;
+      const ratio = naturalH / naturalW || 1;
+      const maxW = Math.min(naturalW, (window.innerWidth || width) * 0.25, 220);
+      let w = Math.max(40, maxW);
+      let h = w * ratio;
+      return { width: w, height: h };
+    };
+    const showPreview = (evt, d) => {
+      if (!preview || !previewImg) return;
+      const targetId = d.restaurant.uid || d.id;
+      previewActiveId = targetId;
+      previewImg.onload = () => {
+        const dims = computeDims(previewImg);
+        placePreview(evt, dims);
+      };
+      previewImg.src = `${DATA_PREFIX}/${d.restaurant.image_filename}`;
+      if (previewCaption) previewCaption.textContent = d.restaurant.restaurant_name || '';
+      preview.style.display = 'block';
+      preview.setAttribute('aria-hidden', 'false');
+      preview.classList.add('open');
+      placePreview(evt, computeDims(previewImg));
+      if (!previewOutsideHandler) {
+        previewOutsideHandler = onOutsideClick;
+        document.addEventListener('pointerdown', onOutsideClick, true);
+      }
+    };
+    const onOutsideClick = ev => {
+      const previewEl = dom.matrixPreview;
+      if (!previewEl) return;
+      const nodeHit = ev.target?.closest && ev.target.closest('.matrix-node');
+      if (nodeHit) return; // let node click handler handle toggling
+      if (ev.target === previewEl || previewEl.contains(ev.target)) return;
+      hideMatrixPreview();
+    };
+    nodeSelection.on('pointerdown', (event, d) => {
+      const currentId = d.restaurant.uid || d.id;
+      if (previewActiveId && previewActiveId === currentId && dom.matrixPreview?.classList.contains('open')) {
+        hideMatrixPreview();
+        suppressNextClick = true;
+      }
+    });
+    nodeSelection.on('click', (event, d) => {
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
+      if (wasDragged) {
+        wasDragged = false;
+        return;
+      }
+      hideHint();
+      const previewEl = dom.matrixPreview;
+      const currentId = d.restaurant.uid || d.id;
+      if (previewEl && previewEl.classList.contains('open') && previewActiveId === currentId) {
+        hideMatrixPreview();
+        return;
+      }
+      showPreview(event, d);
+    });
 
     appState.matrix.nodes = nodes;
     appState.matrix.size = size;
@@ -314,6 +449,7 @@ export function initMatrix(payload = {}) {
       appState.matrix.nodes = null;
       appState.matrix.hintDismissed = false;
       appState.matrix.hintListenerAttached = false;
+      hideMatrixPreview();
       render();
     });
     appState.matrix.resetHooked = true;
