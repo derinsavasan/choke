@@ -1,24 +1,30 @@
 {
   "name": "choke",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "An interactive data-visualization essay on NYC's required choking-victim posters, built with vanilla JS, D3, and Leaflet.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "python3 -m http.server 8000"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/derinsavasan/choke.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": [
+    "data-visualization",
+    "d3",
+    "leaflet",
+    "nyc",
+    "interactive",
+    "mapping"
+  ],
+  "author": "Derin Savasan",
+  "license": "MIT",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/derinsavasan/choke/issues"
   },
-  "homepage": "https://github.com/derinsavasan/choke#readme",
-  "dependencies": {
+  "homepage": "https://derinsavasan.github.io/choke/",
+  "devDependencies": {
     "playwright": "^1.56.1"
   }
 }

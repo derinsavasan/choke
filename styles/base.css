@@ -21,7 +21,9 @@ body { font-family: 'Cabin', sans-serif; overflow: hidden; }
   top: 2vw;
   right: 2vw;
   z-index: 2500;
+  box-sizing: border-box;
   width: 320px;
+  max-width: calc(100vw - 4vw);
   height: 44px;
   background: #0f0f10;
   border-radius: 999px;
@@ -46,7 +48,8 @@ body { font-family: 'Cabin', sans-serif; overflow: hidden; }
   z-index: 2;
 }
 #view-toggle button:focus-visible {
-  outline: none;
+  outline: 2px solid #4da3ff;
+  outline-offset: 2px;
 }
 #view-toggle .toggle-pill {
   position: absolute;
@@ -62,6 +65,10 @@ body { font-family: 'Cabin', sans-serif; overflow: hidden; }
 }
 #view-toggle button.active {
   color: #111;
+}
+@media (max-width: 380px) {
+  #view-toggle { height: 40px; }
+  #view-toggle button { font-size: 15px; padding: 8px 0; }
 }
 
 /* Welcome overlay */

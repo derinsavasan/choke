@@ -3,12 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>choke</title>
-    <!-- Primary favicon (photo). Add a cache-busting query param to help refresh cached icons -->
-    <link rel="icon" href="data-new/heimlich.png?v=2" type="image/png" sizes="any">
-    <link rel="shortcut icon" href="data-new/heimlich.png?v=2" type="image/png">
-    <!-- SVG fallback favicon (small, lightweight) shown if the PNG is not picked up immediately -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' ry='18' fill='%23000'/%3E%3Ctext x='50' y='57' font-size='42' font-family='Cabin, sans-serif' fill='%23fff' text-anchor='middle'%3ECH%3C/text%3E%3C/svg%3E">
+    <title>Choke</title>
+    <meta name="description" content="An interactive case study of New York City's required choking-victim posters, and how decades of decay, bootlegs, and improvisation rewrote an official public graphic. Explore the posters, their locations across the five boroughs, and how far each strays from the city's sample design.">
+    <meta name="author" content="Derin Savasan">
+
+    <!-- Open Graph / social sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Choke — Reading NYC's Choking Posters">
+    <meta property="og:description" content="An interactive case study of NYC's required choking-victim posters and how the city has quietly rewritten an official public graphic through decay, bootlegs, and improvisation.">
+    <meta property="og:url" content="https://derinsavasan.github.io/choke/">
+    <meta property="og:image" content="https://derinsavasan.github.io/choke/images/og-cover.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Choke — Reading NYC's Choking Posters">
+    <meta name="twitter:description" content="An interactive case study of NYC's required choking-victim posters and how the city has quietly rewritten an official public graphic.">
+    <meta name="twitter:image" content="https://derinsavasan.github.io/choke/images/og-cover.jpg">
+    <!-- Favicon: square crop of the Heimlich photo. Cache-busting query param refreshes cached icons. -->
+    <link rel="icon" href="data-new/favicon.png?v=3" type="image/png" sizes="any">
+    <link rel="shortcut icon" href="data-new/favicon.png?v=3" type="image/png">
+    <link rel="apple-touch-icon" href="data-new/favicon.png?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cabin:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -63,7 +79,7 @@
         <div><b>Position:</b> <span id="corner-position"></span></div>
     </div>
     <div id="welcome-message">
-        <p>Ever since the Department of Health set the <a href="https://codelibrary.amlegal.com/codes/newyorkcity/latest/NYCadmin/0-0-0-27660?utm_source=chatgpt.com" target="_blank" rel="noopener noreferrer">requirement</a> for choking-victim posters in 1978, New York has treated the rule loosely. Dr. Henry Heimlich's push turned his maneuver into a required public graphic, and the city has spent decades quietly rewriting it through decay, bootlegs, and improvisation. This project uses those posters as a case study to see how New Yorkers handle public space, read official design, and bend the rules whenever they can. <b>Tap anywhere to begin.</b></p>
+        <p>Ever since the Department of Health set the <a href="https://codelibrary.amlegal.com/codes/newyorkcity/latest/NYCadmin/0-0-0-27660" target="_blank" rel="noopener noreferrer">requirement</a> for choking-victim posters in 1978, New York has treated the rule loosely. Dr. Henry Heimlich's push turned his maneuver into a required public graphic, and the city has spent decades quietly rewriting it through decay, bootlegs, and improvisation. This project uses those posters as a case study to see how New Yorkers handle public space, read official design, and bend the rules whenever they can. <b>Tap anywhere to begin.</b></p>
     </div>
     <button id="matrix-reset" type="button" aria-label="Reset matrix layout">Reset</button>
     <div id="matrix-view"></div>

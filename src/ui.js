@@ -15,8 +15,16 @@ export function setupWelcome() {
       welcome.classList.remove('show');
       backdrop.classList.remove('show');
       document.removeEventListener('click', dismissWelcome);
+      document.removeEventListener('keydown', onKeyDismiss);
+    };
+    const onKeyDismiss = (e) => {
+      if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') {
+        e.preventDefault();
+        dismissWelcome();
+      }
     };
     document.addEventListener('click', dismissWelcome);
+    document.addEventListener('keydown', onKeyDismiss);
   }
   if (dom.mapInfo) {
     dom.mapInfo.style.transition = 'opacity 0.6s ease';
